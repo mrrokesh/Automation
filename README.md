@@ -16,7 +16,6 @@ Rokesh is a customer-engagement automation platform: a marketing site, a logged-
 - AI chat agent (Anthropic or Gemini) with human hand-off, plus an email verifier.
 - Visual flow builder, sequences, broadcasts from templates, shareable forms, WhatsApp chat button and QR code.
 - Without provider keys everything runs in a simulated mode; add keys to send for real.
-- `rokesh/NOTES.md` lists what is built and what is not.
 
 ## Quick start
 
@@ -40,7 +39,14 @@ npm run migrate && npm run dev                   # API on http://localhost:4000
 cd ../frontend && npm install && npm run dev     # http://localhost:5173
 ```
 
-Full instructions, tests and Docker deployment are in [SETUP.md](SETUP.md).
+Tests: `npm test` in `backend/` (uses your database with throwaway rows it deletes) and `rokesh/`; `npm run lint` and `npm run build` in `frontend/`.
+
+Deploy frontend and backend as one service: build the frontend (`npm run build`), then the backend serves `frontend/dist`.
+
+```bash
+docker build -t rokesh .
+docker run -p 4000:4000 --env-file backend/.env -e NODE_ENV=production -e TRUST_PROXY=1 rokesh
+```
 
 ## Configuration and secrets
 
