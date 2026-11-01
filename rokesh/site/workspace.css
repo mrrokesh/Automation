@@ -1,0 +1,40 @@
+.shell{display:flex;min-height:100vh}
+aside{width:220px;border-right:1px solid var(--bd);padding:16px;background:var(--card);flex-shrink:0}
+aside .logo{font-weight:800;font-size:20px;text-decoration:none;display:block;margin-bottom:16px}
+aside h6{margin:16px 0 4px;font-size:11px;text-transform:uppercase;color:var(--mut)}
+aside a{display:block;padding:7px 10px;border-radius:8px;text-decoration:none;font-size:14px}
+aside a.on,aside a:hover{background:var(--pri);color:#fff}
+.main{flex:1;min-width:0;padding:0 20px 40px}
+.top{display:flex;align-items:center;gap:12px;height:60px;border-bottom:1px solid var(--bd)}.top .sp{flex:1}#burger{display:none}
+.pill{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--card);border:1px solid var(--bd)}
+#view h2{margin:20px 0 12px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}.row>*{width:auto}
+.tabs a{padding:6px 12px;border-radius:8px;text-decoration:none;font-size:14px}.tabs a.on{background:var(--card);border:1px solid var(--bd)}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}.k .card .n{font-size:26px;font-weight:800}
+.btn.s{padding:5px 10px;font-size:13px}.btn.d{background:#c0392b}
+.node .row{margin:6px 0 0}
+.chat{border:1px solid var(--bd);border-radius:12px;padding:12px;height:300px;overflow:auto;background:var(--bg)}
+.chat .u{text-align:right}.chat .u span{background:var(--pri);color:#fff}.chat span{display:inline-block;padding:6px 10px;border-radius:10px;background:var(--card);margin:3px 0;max-width:85%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#toast{position:fixed;bottom:16px;right:16px;background:#14171f;color:#fff;padding:10px 14px;border-radius:8px;display:none;z-index:9}
+@media(max-width:800px){aside{position:fixed;left:-240px;top:0;bottom:0;z-index:8;transition:.2s}aside.open{left:0}#burger{display:block}.two{grid-template-columns:1fr}}
+/* flow builder */
+.fb{display:flex;gap:10px;margin-top:8px}
+.palette{width:200px;flex-shrink:0;max-height:560px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.palette h6{margin:8px 0 2px;font-size:11px;text-transform:uppercase;color:var(--mut)}
+.palette .pal{width:100%;font-size:12px}
+.cv{position:relative;flex:1;height:560px;overflow:auto;border:1px solid var(--bd);border-radius:10px;background:radial-gradient(var(--bd) 1px,transparent 1px) 0 0/18px 18px}
+.cv svg{position:absolute;left:0;top:0;pointer-events:none}
+.fn{position:absolute;width:230px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.fh{display:flex;justify-content:space-between;align-items:center;color:#fff;padding:6px 10px;border-radius:8px 8px 0 0;cursor:grab;font-size:13px;font-weight:600;user-select:none;touch-action:none}
+.fh b{cursor:pointer;padding:0 4px}
+.fbody{padding:8px;display:flex;flex-direction:column;gap:6px}.fbody input,.fbody textarea,.fbody select{font-size:12px;padding:5px}
+.port{position:absolute;width:16px;height:16px;border-radius:50%;background:#7c3aed;border:2px solid #fff;cursor:pointer;font-size:9px;color:#fff;text-align:center;line-height:12px;font-style:normal;box-shadow:0 0 0 1px #7c3aed}
+.port.in{left:-9px;top:50%;background:#16a34a;box-shadow:0 0 0 1px #16a34a}.port.out{right:-9px;top:50%}
+.port.out.yes{top:35%;background:#16a34a}.port.out.no{top:70%;background:#dc2626}.port.sel{outline:3px solid #f59e0b}
+@media(max-width:800px){.fb{flex-direction:column}.palette{width:100%;max-height:160px;flex-direction:row;flex-wrap:wrap}}
+.fn.sel{outline:2px solid #f59e0b}.fn.run{box-shadow:0 0 0 4px #f59e0b}.fn.done{box-shadow:0 0 0 4px #16a34a}
+#stage{position:absolute;left:0;top:0;width:3000px;height:1600px;transform-origin:0 0}#sizer{position:relative}#nodes{position:absolute;left:0;top:0}
+#mini{position:absolute;right:14px;bottom:14px;width:180px;height:110px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;opacity:.95;overflow:hidden;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+#mini i{position:absolute;opacity:.7;border-radius:2px}#mini b{position:absolute;border:2px solid #f59e0b;box-sizing:border-box;pointer-events:none}

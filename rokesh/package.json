@@ -1,0 +1,11 @@
+{
+  "name": "rokesh",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.mjs",
+    "build:pages": "node build-pages.mjs",
+    "test": "node --test test/"
+  },
+  "engines": { "node": ">=22" }
+}

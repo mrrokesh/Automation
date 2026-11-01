@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login · Rokesh</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&family=Onest:wght@500;600;700&display=swap"><link rel="stylesheet" href="shell.css"></head>
+<body class="auth">
+<div class="stage">
+<a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:#3a2a78;font-weight:800;font-size:22px"><svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#6842e3"/><path fill="#fff" d="M7.5 16.2 23.5 8l-6.4 16.2-2.3-6.4z"/></svg> Rokesh</a>
+<div class="stage-mid" id="stage"></div>
+</div>
+<div class="card" id="card"></div>
+<script>
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+let mode = params.get('mode') === 'signup' ? 'signup' : 'login';
+let needsSetup = false;
+let resetEmail = '', resetCode = '';
+const samples = [
+  ['Offer message', 'Hi {{1}}! {{2}}% off. Use code {{3}}.'],
+  ['Order cancelled', 'Hi {{1}}, order {{2}} has been cancelled.'],
+  ['Delivery tracking', 'Hey {{1}}, your order from {{2}} has shipped.'],
+];
+function stage() {
+  if (mode === 'login' || mode === 'forgot' || mode === 'reset') {
+    $('#stage').innerHTML = `<div><h2>Explore templates</h2><p class="lead">Ready-to-send WhatsApp and email messages. Add them to your workspace after you sign in.</p>
+      <div class="explore">${samples.map(([n, b]) => `<div class="preview"><b>${n}</b><p>${b}</p></div>`).join('')}</div></div>`;
+  } else {
+    $('#stage').innerHTML = `<div><h2>Put your business on Auto-pilot</h2><p class="lead">Automate your growth strategy across WhatsApp, Instagram, Facebook, Email, SMS and voice, from one workspace.</p></div>`;
+  }
+}
+function card() {
+  const err = '<p class="err" id="m"></p>';
+  if (mode === 'forgot' || mode === 'reset') {
+    $('#card').innerHTML = `<h1>Forgot password</h1><p>Enter the email on the account. This demo shows the reset code here because email delivery is not connected.</p>
+      ${mode === 'reset' ? `<p class="code">Code ${resetCode}</p>` : ''}
+      <form id="f"><label>Work email</label><input name="email" type="email" required value="${resetEmail}">
+      ${mode === 'reset' ? `<label>Code</label><input name="code" required value="${resetCode}"><label>New password</label><input name="password" type="password" minlength="10" required placeholder="At least 10 characters">` : ''}
+      <button class="btn" id="b">${mode === 'reset' ? 'Set password' : 'Send code'}</button></form>${err}
+      <p class="links"><a href="#" id="toLogin">Back to login</a></p>`;
+  } else if (mode === 'signup') {
+    $('#card').innerHTML = `<h1>Create Account</h1><p><span class="chip">No credit card needed</span></p>
+      <form id="f"><input name="name" placeholder="Full Name" required>
+      <div class="phone" style="margin-top:10px"><select name="cc"><option value="+91">+91</option><option value="+1">+1</option><option value="+44">+44</option><option value="+971">+971</option></select>
+      <input name="phone" placeholder="WhatsApp Number" required></div>
+      <input name="email" type="email" placeholder="Work Email (e.g. name@yourcompany.com)" required style="margin-top:10px">
+      <div class="pw"><input name="password" type="password" minlength="10" placeholder="Password (10+ characters)" required><button type="button" id="eye" aria-label="Show password">Show</button></div>
+      <input name="company" placeholder="Business Name" required style="margin-top:10px">
+      <label class="check"><input type="checkbox" name="terms" required> By continuing, you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.</label>
+      <button class="btn" id="b" disabled>Start Trial</button></form>${err}
+      <p>Already have an account? <a href="#" id="toLogin">Login</a></p>
+      ${needsSetup ? '<p style="color:#666;font-size:13px">First account on this server becomes the owner.</p>' : ''}`;
+  } else {
+    $('#card').innerHTML = `<h1>Login to Rokesh</h1>
+      <form id="f"><input name="email" type="email" placeholder="Work Email" autocomplete="username" required>
+      <div class="pw"><input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button type="button" id="eye" aria-label="Show password">Show</button></div>
+      <p class="links"><a href="#" id="toForgot">Forgot Password?</a><span></span></p>
+      <button class="btn">Login</button></form>${err}
+      <p>New to Rokesh? <a href="#" id="toSignup">Start a trial</a></p>`;
+  }
+  stage();
+  $('#toLogin') && ($('#toLogin').onclick = (e) => { e.preventDefault(); mode = 'login'; card(); });
+  $('#toSignup') && ($('#toSignup').onclick = (e) => { e.preventDefault(); mode = 'signup'; card(); });
+  $('#toForgot') && ($('#toForgot').onclick = (e) => { e.preventDefault(); mode = 'forgot'; card(); });
+  const eye = $('#eye'); if (eye) eye.onclick = () => { const p = document.querySelector('input[name=password]'); p.type = p.type === 'password' ? 'text' : 'password'; };
+  const terms = document.querySelector('input[name=terms]');
+  const btn = $('#b');
+  if (terms && btn) terms.onchange = () => { btn.disabled = !terms.checked; };
+  $('#f').onsubmit = submit;
+}
+async function submit(e) {
+  e.preventDefault(); $('#m').textContent = '';
+  const d = Object.fromEntries(new FormData(e.target));
+  try {
+    if (mode === 'signup') {
+      if (!needsSetup) { $('#m').textContent = 'Registration is closed. Ask the owner to add you from People.'; return; }
+      sessionStorage.setItem('pendingProfile', JSON.stringify({ name: d.name, phone: d.cc + d.phone, company: d.company }));
+      const r = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: d.email, password: d.password, name: d.name, phone: d.cc + d.phone, company: d.company }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { sessionStorage.removeItem('pendingProfile'); $('#m').textContent = j.error || 'Could not create the account'; return; }
+      location.replace('app.html');
+    } else if (mode === 'forgot') {
+      const r = await fetch('/api/forgot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: d.email }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { $('#m').textContent = j.error || 'Could not start reset'; return; }
+      resetEmail = d.email;
+      if (!j.demoCode) { $('#m').textContent = 'No account uses that email.'; return; }
+      resetCode = j.demoCode; mode = 'reset'; card();
+    } else if (mode === 'reset') {
+      const r = await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: d.email, code: d.code, password: d.password }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { $('#m').textContent = j.error || 'Could not reset'; return; }
+      location.replace('app.html');
+    } else {
+      const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: d.email, password: d.password }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { $('#m').textContent = j.error || 'Wrong email or password'; return; }
+      location.replace('app.html');
+    }
+  } catch { $('#m').textContent = 'Backend not running. Start it with: node server/server.mjs'; }
+}
+fetch('/api/me').then(r => r.json()).then(j => {
+  if (j.user) return location.replace('app.html');
+  needsSetup = !!j.needsSetup;
+  if (needsSetup && mode === 'login' && !params.get('mode')) mode = 'signup';
+  card();
+}).catch(() => { card(); $('#m').textContent = 'Backend not running. Start it with: node server/server.mjs'; });
+</script>
+</body></html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f3f1ef"><title>Pricing | Rokesh</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&family=Onest:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="marketing.css"><script>document.documentElement.classList.add('js')</script></head><body class="site">
+<header><div class="wrap"><nav><a class="logo" href="index.html"><i class="mark"></i>Rokesh</a>
+<button class="nav-toggle" aria-label="Menu" aria-expanded="false" type="button">&#9776;</button>
+<div class="links"><a class="l" href="pricing.html">Pricing</a><a class="l" href="channels.html">Channels</a><a class="l" href="solutions.html">Solutions</a><a class="l" href="case-studies.html">Case Studies</a><a class="l" href="blog.html">Resources</a><a class="l mob-only" href="login.html">Login</a><a class="btn mob-cta" href="index.html#contact">Book a Demo</a></div>
+<div class="nav-cta"><a class="btn o sm" href="login.html">Login</a><a class="btn sm" href="index.html#contact">Book a Demo</a></div></nav></div></header>
+<main><section><div class="wrap centered">
+<h1 class="reveal">AI-powered workflows, priced for your needs</h1>
+<p class="lead reveal" style="--d:.08s">Flexible plans for teams running AI-driven automation across systems and channels, with visibility and control.</p>
+<div class="seg reveal" style="--d:.12s" id="seg-term" role="group" aria-label="Billing term"><button data-t="quarterly" type="button">Quarterly</button><button data-t="half" type="button">Half Yearly <small>Save 8%</small></button><button data-t="annual" type="button" aria-pressed="true" class="on">Annual <small>Save 20%</small></button></div>
+<div class="seg sm reveal" style="--d:.14s" id="seg-cur" role="group" aria-label="Currency"><button data-c="INR" type="button" class="on">INR</button><button data-c="USD" type="button">USD</button></div>
+<div class="plans" id="plans"></div>
+<p class="statnote">Annual prices are as shown in the product; quarterly and half-yearly are estimated from the stated discounts and USD from a rough rate. Billing and upgrades are not connected in this demo.</p>
+</div></section>
+<script>
+(function(){
+  var P=[{n:'Startup',t:'3,000 Automation Tasks/month',inr:1999,f:['WhatsApp + Email + SMS','50 connectors','10 custom attributes','WhatsApp team inbox','2 team seats (extra ₹500/seat)']},
+         {n:'Growth',t:'10,000 Automation Tasks/month',inr:4999,hot:1,f:['Everything in Startup','Higher task limits','More seats and connectors','Priority onboarding support']},
+         {n:'Enterprise',t:'Custom automation volume',inr:null,f:['Voice AI','Custom integrations','Dedicated onboarding and migration','Governance and access controls']}];
+  var term='annual',cur='INR',F={quarterly:1/0.8,half:0.92/0.8,annual:1};
+  function money(v){return cur==='INR'?'₹'+Math.round(v).toLocaleString('en-IN'):'$'+Math.round(v/83).toLocaleString('en-US')}
+  function esc(x){return String(x).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function render(){
+    document.getElementById('plans').innerHTML=P.map(function(p){
+      return '<div class="plan'+(p.hot?' hot':'')+'"><h3>'+esc(p.n)+'</h3><p class="inc">'+(p.inr?'Includes '+esc(p.t):esc(p.t))+'</p>'
+       +'<div class="price">'+(p.inr?money(p.inr*F[term])+' <small>/ month</small>':'Custom')+'</div>'
+       +'<a class="btn'+(p.hot?'':' o')+'" href="index.html#contact">'+(p.inr?'Upgrade Plan':'Talk to sales')+'</a>'
+       +'<ul class="ticks">'+p.f.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul></div>'}).join('');
+    document.querySelectorAll('#seg-term button').forEach(function(b){b.classList.toggle('on',b.dataset.t===term)});
+    document.querySelectorAll('#seg-cur button').forEach(function(b){b.classList.toggle('on',b.dataset.c===cur)});
+  }
+  document.getElementById('seg-term').addEventListener('click',function(e){var b=e.target.closest('button');if(b){term=b.dataset.t;render()}});
+  document.getElementById('seg-cur').addEventListener('click',function(e){var b=e.target.closest('button');if(b){cur=b.dataset.c;render()}});
+  render();
+})();
+</script></main>
+<section style="padding:0 0 96px"><div class="cta-dark reveal"><h2>See Rokesh in action</h2><p>Schedule a demo to explore how Rokesh runs workflows across your systems and channels.</p><a class="btn" href="index.html#contact">Book a demo</a></div></section>
+<footer><div class="wrap cols"><div class="brand"><a class="logo" href="index.html" style="display:flex;align-items:center;gap:9px;font-family:Onest,sans-serif;font-weight:600;font-size:20px;color:var(--fg);text-decoration:none"><i class="mark"></i>Rokesh</a><p style="max-width:300px">Running workflows with clarity and control.</p><p>admin@rokesh.example</p></div>
+<div><b>Pages</b><br><a href="index.html">Home</a><br><a href="pricing.html">Pricing</a><br><a href="channels.html">Channels</a><br><a href="solutions.html">Solutions</a><br><a href="blog.html">Resources</a><br><a href="case-studies.html">Case Studies</a><br><a href="careers.html">Careers</a></div>
+<div><b>Appendix</b><br><a href="privacy.html">Privacy Policy</a><br><a href="terms.html">Terms &amp; Conditions</a><br><a href="refund.html">Refund Policy</a><br><a href="guides.html">Support</a><br><a href="blog.html">PR Releases</a><br><a href="login.html">Login</a></div>
+<div><b>Social</b><br><a href="#">LinkedIn</a><br><a href="#">Instagram</a><br><a href="#">YouTube</a></div></div>
+<div class="wrap" style="padding-top:20px;font-size:13px;color:var(--mut,#7a6f84)">&copy; 2026 Rokesh. All rights reserved. Replace this line with your registered address.</div></footer>
+<script src="app.js"></script><script src="site.js" defer></script></body></html>

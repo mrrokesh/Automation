@@ -1,0 +1,6 @@
+**/node_modules
+**/.env
+rokesh
+cheerio-screens
+frontend/dist
+.claude
