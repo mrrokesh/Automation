@@ -45,3 +45,8 @@ export const onForm = (fn) => (e) => {
 }
 
 export const A = ({ className = '', ...r }) => <a className={`text-brand-600 underline-offset-2 hover:underline ${className}`} {...r} />
+
+// A file picker styled to match the app (the browser's default control looks unstyled).
+export const FileInput = ({ className = '', ...r }) => (
+  <input type="file" className={`block w-full max-w-md cursor-pointer rounded-xl border border-dashed border-ink/25 bg-white/70 p-2 text-sm file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-brand-600 file:px-4 file:py-1.5 file:text-[13px] file:font-medium file:text-white hover:border-brand-500 hover:file:bg-brand-500 ${className}`} {...r} />
+)

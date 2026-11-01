@@ -125,7 +125,7 @@ export function Contacts() {
       <form onSubmit={add}><Row><In name="name" placeholder="Name" required w="w-36" /><In name="phone" placeholder="Phone +91…" w="w-36" /><In name="email" type="email" placeholder="Email" w="w-44" />
         <Sel name="label" w="w-32">{S.labels.map((l) => <option key={l}>{l}</option>)}</Sel><Submit>Add contact</Submit></Row></form>
       <details className="rounded-2xl border border-ink/10 bg-white/60 p-4"><summary className="cursor-pointer font-medium">Upload CSV and map columns</summary>
-        <div className="mt-3 space-y-3"><input type="file" accept=".csv" onChange={pickFile} aria-label="CSV file" />
+        <div className="mt-3 space-y-3"><FileInput accept=".csv" onChange={pickFile} aria-label="CSV file" />
           {csv && <div className="space-y-2"><Mut>Map each column to an attribute (unmapped columns are skipped):</Mut>
             {csv.rows[0].map((h, i) => <Row key={i}><span className="w-40 truncate">{h}</span><Sel w="w-44" value={csv.map[i]} onChange={(e) => setCsv({ ...csv, map: csv.map.map((m, n) => (n === i ? e.target.value : m)) })}><option value="">(skip)</option>{keys.filter((k) => k[0] !== 'label').map((k) => <option key={k[0]} value={k[0]}>{k[1]}</option>)}</Sel></Row>)}
             <Row><Sel w="w-44" value={csv.label} onChange={(e) => setCsv({ ...csv, label: e.target.value })}>{S.labels.map((l) => <option key={l}>{l}</option>)}<option value="__new">+ New label…</option></Sel>
