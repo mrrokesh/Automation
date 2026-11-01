@@ -39,15 +39,27 @@ publicApi.post('/public/forms/:id/submit', wrap(async (req, res) => {
   res.json({ ok: true })
 }))
 
-// "Book a demo" form on the marketing site: stored as a lead for the team to follow up.
+// "Book a demo" form on the marketing site. Kept for the admin portal and also queued as a lead for the workspace.
 publicApi.post('/public/contact', wrap(async (req, res) => {
   if (limited('contact', req.ip, 5, 60e3)) return res.status(429).json({ error: 'too many requests, try again in a minute' })
   const b = req.body ?? {}
   const email = clip(b.email, 120).trim(), phone = clip(b.phone, 20).trim(), name = clip(b.name, 80).trim()
   if (!name || !emailRe.test(email)) return res.status(400).json({ error: 'name and a valid email are required' })
   const company = clip(b.company, 60).trim()
+  await query('INSERT INTO demo_requests (name, email, phone, company, employees, interest) VALUES ($1, $2, $3, $4, $5, $6)',
+    [name, email, phone, company, clip(b.employees, 20), clip(b.interest, 100)])
   await query('INSERT INTO leads (id, name, phone, email) VALUES ($1, $2, $3, $4)', [newId(), company ? `${name} (${company})` : name, phone, email])
   await trimTable('leads')
+  res.json({ ok: true })
+}))
+
+// Support page on the marketing site: creates a ticket for the admin portal's queue.
+publicApi.post('/public/support', wrap(async (req, res) => {
+  if (limited('support', req.ip, 5, 60e3)) return res.status(429).json({ error: 'too many requests, try again in a minute' })
+  const b = req.body ?? {}
+  const email = clip(b.email, 120).trim(), subject = clip(b.subject, 150).trim(), message = clip(b.message, 5000).trim()
+  if (!emailRe.test(email) || !subject || !message) return res.status(400).json({ error: 'email, subject and message are required' })
+  await query('INSERT INTO support_tickets (name, email, subject, message) VALUES ($1, $2, $3, $4)', [clip(b.name, 80).trim(), email, subject, message])
   res.json({ ok: true })
 }))
 

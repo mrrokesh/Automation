@@ -21,6 +21,17 @@ Everything below lives under `/app` and saves to PostgreSQL.
 - **Commerce and tools:** WhatsApp catalog, Razorpay payment links, email verifier.
 - **Channels:** WhatsApp and SMS (Twilio), email (Resend). Without provider keys everything runs in a simulated mode.
 
+## Admin portal
+
+Owners and admins get an **Admin** section in the workspace sidebar (`/app/admin`). Members never see it, and the API refuses them.
+
+- **Overview:** user, demo-request, ticket, contact and form counts, a 7-day activity chart, and which services are live.
+- **Users:** invite, change role, disable or enable, set a temporary password, delete. The owner account cannot be changed, only the owner can create admins or change roles, and nobody can edit their own account here. Disabled users are signed out at once.
+- **Demo requests:** everyone who used "Book a demo", with status (new, contacted, closed) and notes.
+- **Support tickets:** requests from the public `/support` page, with status, priority, assignee, notes and email replies (sent when Resend is configured).
+- **Audit log:** sign-ins and every admin action, with filters. Passwords are never recorded.
+- **System:** server, database and configuration status. Secrets are never shown.
+
 ## Quick start
 
 Requires Node.js 22.23+ and a PostgreSQL database.

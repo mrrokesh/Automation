@@ -6,6 +6,7 @@ import Home from './pages/Home'
 import Pricing from './pages/Pricing'
 import Auth from './pages/Auth'
 import PublicForm from './pages/PublicForm'
+import Support from './pages/Support'
 import Workspace from './workspace/Workspace'
 import { Article, Blog, CardPage, Guides, Legal, NotFound } from './pages/Pages'
 
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="pricing" element={<Pricing />} />
           {['channels', 'solutions', 'case-studies', 'careers'].map((p) => <Route key={p} path={p} element={<CardPage page={p} />} />)}
           {['privacy', 'terms', 'refund'].map((p) => <Route key={p} path={p} element={<Legal page={p} />} />)}
+          <Route path="support" element={<Support />} />
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<Article kind="blog" />} />
           <Route path="guides" element={<Guides />} />

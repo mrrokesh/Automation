@@ -53,7 +53,7 @@ export function CtaBlock() {
 
 const FOOT = [
   ['Pages', [['/', 'Home'], ['/pricing', 'Pricing'], ['/channels', 'Channels'], ['/solutions', 'Solutions'], ['/blog', 'Resources'], ['/case-studies', 'Case Studies'], ['/careers', 'Careers']]],
-  ['Appendix', [['/privacy', 'Privacy Policy'], ['/terms', 'Terms & Conditions'], ['/refund', 'Refund Policy'], ['/guides', 'Support'], ['/blog', 'PR Releases'], ['/login', 'Login']]],
+  ['Appendix', [['/privacy', 'Privacy Policy'], ['/terms', 'Terms & Conditions'], ['/refund', 'Refund Policy'], ['/support', 'Support'], ['/blog', 'PR Releases'], ['/login', 'Login']]],
 ]
 
 function Footer() {

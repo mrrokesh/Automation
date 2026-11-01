@@ -7,6 +7,7 @@ import { query } from '../db.js'
 import { hashPassword, verifyPassword, DUMMY_HASH } from '../password.js'
 import { currentUser, requireAuth } from '../middleware/auth.js'
 import { clip, emailLive, resendSend } from '../services/providers.js'
+import { audit } from '../services/audit.js'
 
 const router = Router()
 const emailOk = (e) => typeof e === 'string' && e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)
@@ -35,6 +36,7 @@ router.post('/register', limiter, async (req, res, next) => {
       [email.trim().toLowerCase(), await hashPassword(password), clip(req.body.name, 80), clip(req.body.phone, 24), clip(req.body.company, 80)],
     )
     if (!rows.length) return res.status(409).json({ error: 'An account with this email already exists' })
+    await audit(rows[0].email, 'owner.created', rows[0].email)
     startSession(res, rows[0])
     res.status(201).json({ ok: true, user: publicUser(rows[0]) })
   } catch (err) { next(err) }
@@ -44,10 +46,13 @@ router.post('/login', limiter, async (req, res, next) => {
   try {
     const { email, password } = req.body ?? {}
     if (!emailOk(email) || typeof password !== 'string' || password.length > 200) return res.status(401).json({ error: 'Wrong email or password' })
-    const { rows } = await query('SELECT id, email, role, name, phone, company, password_hash FROM users WHERE email = $1', [email.trim().toLowerCase()])
+    const { rows } = await query('SELECT id, email, role, name, phone, company, password_hash, disabled FROM users WHERE email = $1', [email.trim().toLowerCase()])
     const user = rows[0]
     const ok = await verifyPassword(password, user ? user.password_hash : DUMMY_HASH) // always hash, so timing does not reveal valid emails
-    if (!user || !ok) return res.status(401).json({ error: 'Wrong email or password' })
+    if (!user || !ok) { if (user) await audit(email.trim().toLowerCase(), 'login.failed'); return res.status(401).json({ error: 'Wrong email or password' }) }
+    if (user.disabled) { await audit(user.email, 'login.blocked', user.email, 'account disabled'); return res.status(403).json({ error: 'This account is disabled. Ask your workspace owner.' }) }
+    await query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id])
+    await audit(user.email, 'login')
     startSession(res, user)
     res.json({ ok: true, user: publicUser(user) })
   } catch (err) { next(err) }
@@ -88,6 +93,7 @@ router.post('/reset', limiter, async (req, res, next) => {
     if (!pwOk(req.body?.password)) return res.status(400).json({ error: 'Password must be 10 to 200 characters' })
     const { rows } = await query('UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id, email, role, name, phone, company', [await hashPassword(req.body.password), email])
     resets.delete(email)
+    await audit(email, 'password.reset', email, 'self-service code')
     if (!rows.length) return res.status(400).json({ error: 'Code is invalid or expired' })
     startSession(res, rows[0])
     res.json({ ok: true })
@@ -106,6 +112,7 @@ router.post('/users', requireAuth, async (req, res, next) => {
     if (!emailOk(email) || !pwOk(password)) return res.status(400).json({ error: 'Enter a valid email and a password of 10 to 200 characters' })
     const { rowCount } = await query("INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'member') ON CONFLICT (email) DO NOTHING", [email.trim().toLowerCase(), await hashPassword(password)])
     if (!rowCount) return res.status(409).json({ error: 'Already exists' })
+    await audit(req.user.email, 'user.invited', email.trim().toLowerCase())
     res.json({ ok: true })
   } catch (err) { next(err) }
 })
@@ -114,7 +121,8 @@ router.delete('/users/:id', requireAuth, async (req, res, next) => {
   try {
     if (req.user.role !== 'owner' || String(req.user.id) === req.params.id) return res.status(403).json({ error: 'Owner only, and not yourself' })
     if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: 'Not found' })
-    await query('DELETE FROM users WHERE id = $1', [req.params.id])
+    const gone = await query('DELETE FROM users WHERE id = $1 RETURNING email', [req.params.id])
+    if (gone.rowCount) await audit(req.user.email, 'user.deleted', gone.rows[0].email)
     res.json({ ok: true })
   } catch (err) { next(err) }
 })

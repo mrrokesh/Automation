@@ -8,6 +8,7 @@ import { pool } from './db.js'
 import authRoutes from './routes/auth.js'
 import { publicApi, workspaceApi, webhooks } from './routes/workspace.js'
 import { sameOrigin } from './middleware/auth.js'
+import adminRoutes from './routes/admin.js'
 import { config } from './config.js'
 
 const frontendDist = fileURLToPath(new URL('../../frontend/dist', import.meta.url))
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes) // same handlers under both prefixes
   app.use('/api', authRoutes)
   app.use('/api', publicApi)
+  app.use('/api/admin', adminRoutes)
   app.use('/api', workspaceApi)
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
   app.use('/webhook', webhooks)
