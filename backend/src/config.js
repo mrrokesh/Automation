@@ -17,4 +17,6 @@ export const config = {
   // Fixed at 12 as requested; do not read this from the environment.
   bcryptRounds: 12,
   production: process.env.NODE_ENV === 'production',
+  // Optional: use a separate schema (the tests do this so they never touch real data).
+  dbSchema: /^[a-z0-9_]+$/.test(process.env.DB_SCHEMA || '') ? process.env.DB_SCHEMA : '',
 }

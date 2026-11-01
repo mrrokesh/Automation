@@ -1,4 +1,4 @@
-# Rokesh app (frontend + backend) in one image. The cheerio-style replica in rokesh/ is a separate project.
+# Rokesh (frontend + backend) in one image.
 # Build:  docker build -t rokesh .
 # Run:    docker run -p 4000:4000 --env-file backend/.env -e NODE_ENV=production -e TRUST_PROXY=1 rokesh
 # NODE_ENV=production makes the session cookie Secure, so serve it over HTTPS (behind your platform's proxy).

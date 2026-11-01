@@ -6,3 +6,4 @@ backend/.env
 cheerio-screens/
 *.log
 dist/
+rokesh/
