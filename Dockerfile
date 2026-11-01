@@ -22,4 +22,5 @@ COPY backend/ ./
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
 USER node
 EXPOSE 4000
-CMD ["node", "src/index.js"]
+# Apply any pending database migrations, then start the server.
+CMD ["sh", "-c", "node scripts/migrate.js && node src/index.js"]
