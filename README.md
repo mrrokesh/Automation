@@ -23,7 +23,7 @@ Everything below lives under `/app` and saves to PostgreSQL.
 
 ## Admin portal
 
-Owners and admins get an **Admin** section in the workspace sidebar (`/app/admin`). Members never see it, and the API refuses them.
+Sign in at **`/admin`** (a dedicated admin login that only lets owners and admins through) or use the normal login and open the **Admin** section in the workspace sidebar (`/app/admin`). Members never see it, and the API refuses them.
 
 - **Overview:** user, demo-request, ticket, contact and form counts, a 7-day activity chart, and which services are live.
 - **Users:** invite, change role, disable or enable, set a temporary password, delete. The owner account cannot be changed, only the owner can create admins or change roles, and nobody can edit their own account here. Disabled users are signed out at once.

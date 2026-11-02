@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Pricing from './pages/Pricing'
 import Auth from './pages/Auth'
+import AdminLogin from './pages/AdminLogin'
 import PublicForm from './pages/PublicForm'
 import Support from './pages/Support'
 import Workspace from './workspace/Workspace'
@@ -33,6 +34,8 @@ export default function App() {
           <Route path="guides/:slug" element={<Article kind="guide" />} />
         </Route>
         <Route path="login" element={<Auth />} />
+        <Route path="admin" element={<AdminLogin />} />
+        <Route path="admin/login" element={<AdminLogin />} />
         <Route path="form" element={<PublicForm />} />
         <Route path="form/:id" element={<PublicForm />} />
         <Route path="app/*" element={<Protected><Workspace /></Protected>} />
