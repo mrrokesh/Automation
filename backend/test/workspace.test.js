@@ -88,12 +88,12 @@ test('workspace state: empty at first, saved and read back, signed-in only', asy
   assert.equal(back.contacts[0].name, 'Ravi'); assert.equal(back.blob.length, 400000)
 })
 
-test('public demo request is stored as a lead and validated', async () => {
+test('public demo request is validated and kept for the platform, not queued as a workspace lead', async () => {
   const a = client()
   assert.equal((await a.call('/api/public/contact', { method: 'POST', body: { name: 'Ada' } })).status, 400)
   assert.equal((await a.call('/api/public/contact', { method: 'POST', body: { name: 'Ada', email: 'ada@corp.test', company: 'Corp', phone: '+911' } })).status, 200)
-  const leads = (await owner.call('/api/leads')).json.leads
-  assert.equal(leads.at(-1).name, 'Ada (Corp)'); await owner.call('/api/leads/ack', { method: 'POST', body: { ids: leads.map((l) => l.id) } })
+  assert.equal((await owner.call('/api/leads')).json.leads.length, 0, 'demo requests are platform data')
+  assert.equal((await owner.call('/api/platform/demo-requests')).json.total, 1)
 })
 
 test('Twilio inbound webhook fills the inbox; replies are logged', async () => {

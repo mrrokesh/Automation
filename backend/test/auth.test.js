@@ -65,7 +65,7 @@ test('login and logout', async () => {
 })
 
 test('a tampered or deleted-user session is rejected', async () => {
-  await query("INSERT INTO users (email, password_hash) VALUES ('temp@example.test', $1)", [await hashPassword(PASSWORD)])
+  await query("INSERT INTO users (email, password_hash, workspace_id) VALUES ('temp@example.test', $1, (SELECT min(id) FROM workspaces))", [await hashPassword(PASSWORD)])
   const c = client(); await c.call('/api/login', { method: 'POST', body: { email: 'temp@example.test', password: PASSWORD } })
   assert.equal((await c.call('/api/forms')).status, 200)
   await query("DELETE FROM users WHERE email = 'temp@example.test'")

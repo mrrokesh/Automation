@@ -9,7 +9,8 @@ import { Campaigns, Catalog, QR, Templates } from './views/Marketing'
 import { Integrations, Keywords, Sequences, Workflows } from './views/Automation'
 import { Canned, Inbox, Team } from './views/Support'
 import { Agent, Payments, Verifier, Voice } from './views/AiCommerce'
-import { AdminAudit, AdminDemos, AdminOverview, AdminSystem, AdminTickets, AdminUsers } from './views/Admin'
+import { AdminAudit, AdminOverview, AdminUsers, PlatformAudit } from './views/Admin'
+import { PlatformDemos, PlatformOverview, PlatformSystem, PlatformTickets, PlatformWorkspaces } from './views/Platform'
 
 const MENU = [
   ['Dashboard', [['dash', 'Dashboard', Dashboard]]],
@@ -21,14 +22,16 @@ const MENU = [
   ['Commerce', [['catalog', 'WhatsApp Catalog', Catalog], ['payments', 'Payment Links', Payments]]],
   ['Tools', [['verifier', 'Email Verifier', Verifier]]],
 ]
-// Owners and admins also get the admin portal. The API enforces this too.
-const ADMIN = ['Admin', [['admin', 'Overview', AdminOverview], ['admin-users', 'Users', AdminUsers], ['admin-demos', 'Demo requests', AdminDemos], ['admin-support', 'Support tickets', AdminTickets], ['admin-audit', 'Audit log', AdminAudit], ['admin-system', 'System', AdminSystem]]]
+// Owners and admins get the admin portal for their own workspace; platform admins also get the platform portal.
+// The API enforces both; hiding the menus only keeps the screen honest.
+const ADMIN = ['Admin', [['admin', 'Overview', AdminOverview], ['admin-users', 'Users', AdminUsers], ['admin-audit', 'Audit log', AdminAudit]]]
+const PLATFORM = ['Platform', [['platform', 'Overview', PlatformOverview], ['platform-workspaces', 'Workspaces', PlatformWorkspaces], ['platform-demos', 'Demo requests', PlatformDemos], ['platform-support', 'Support tickets', PlatformTickets], ['platform-audit', 'Audit log', PlatformAudit], ['platform-system', 'System', PlatformSystem]]]
 const isAdmin = (u) => u?.role === 'owner' || u?.role === 'admin'
 
 function Shell() {
   const { S, status, saveState } = useWs()
   const { user, signOut } = useAuth()
-  const menu = isAdmin(user) ? [...MENU, ADMIN] : MENU
+  const menu = [...MENU, ...(isAdmin(user) ? [ADMIN] : []), ...(user?.isPlatformAdmin ? [PLATFORM] : [])]
   const items = menu.flatMap(([, i]) => i)
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
@@ -51,6 +54,7 @@ function Shell() {
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink/10 bg-white/85 px-4 py-3 backdrop-blur">
           <button type="button" aria-label="Menu" onClick={() => setOpen(true)} className="grid size-9 cursor-pointer place-items-center rounded-lg border border-ink/15 text-lg lg:hidden">☰</button>
           <b className="font-display text-lg">{current}</b>
+          <span className="hidden rounded-full bg-brand-500/10 px-2.5 py-0.5 text-xs font-medium text-brand-600 sm:inline" title="Your workspace">{user?.workspaceName}</span>
           <span className="ml-auto hidden rounded-full border border-ink/15 bg-white px-3 py-1 text-xs sm:inline">{status.live ? 'Live delivery' : 'Simulated delivery'}</span>
           <span className="text-xs opacity-60" aria-live="polite">{saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Not saved' : 'Saved'}</span>
           <span className="hidden text-sm opacity-70 md:inline">{user?.email}</span>

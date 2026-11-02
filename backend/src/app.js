@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js'
 import { publicApi, workspaceApi, webhooks } from './routes/workspace.js'
 import { sameOrigin } from './middleware/auth.js'
 import adminRoutes from './routes/admin.js'
+import platformRoutes from './routes/platform.js'
 import { config } from './config.js'
 
 const frontendDist = fileURLToPath(new URL('../../frontend/dist', import.meta.url))
@@ -55,6 +56,7 @@ export function createApp() {
   app.use('/api', authRoutes)
   app.use('/api', publicApi)
   app.use('/api/admin', adminRoutes)
+  app.use('/api/platform', platformRoutes)
   app.use('/api', workspaceApi)
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
   app.use('/webhook', webhooks)

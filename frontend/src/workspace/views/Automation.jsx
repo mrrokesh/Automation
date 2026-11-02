@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../../api'
 import { uid, kwMatch, UNIT, dueIn } from '../engine'
 import { useWs } from '../context'
 import { B, Code, In, Mut, onForm, Page, Row, Sel, Submit, Table, Td, Area } from '../ui'
@@ -134,8 +135,23 @@ export function Integrations() {
       <form onSubmit={add}><Row><In name="name" placeholder="Name (e.g. Slack alerts)" required w="w-52" /><In name="url" type="url" placeholder="https://hooks…" required w="w-80" /><Submit>Save</Submit></Row></form>
       <Table head={['Name', 'URL', '']} empty="None saved." rows={S.hooks.map((h) => <tr key={h.id}><Td>{h.name}</Td><Td className="break-all">{h.url}</Td><Td><Row><B v="o" onClick={() => test(h)}>Test</B><B v="d" onClick={() => update((s) => { s.hooks = s.hooks.filter((x) => x.id !== h.id) })}>Delete</B></Row></Td></tr>)} />
       <h3 className="font-display text-lg font-semibold">Inbound: push contacts in</h3>
-      <Mut>Set <Code>INBOUND_KEY</Code> (16+ random characters) in backend/.env, then have Shopify, Pabbly, Zapier or Make POST JSON <Code>{'{"name","phone","email"}'}</Code> to <Code>{location.origin}/webhook/contact?key=YOUR_KEY</Code>. This needs a public https URL (for example a tunnel). New contacts appear here and start newContact workflows while this workspace is open.</Mut>
+      <InboundInfo />
       <Mut>Not built: native connector screens for Shopify, Facebook, HubSpot or Salesforce. Use webhooks through Zapier, Make or Pabbly.</Mut>
     </Page>
+  )
+}
+
+// This workspace's own webhook addresses. The key is shown to owners and admins only.
+function InboundInfo() {
+  const [info, setInfo] = useState(null)
+  useEffect(() => { api.workspaceInfo().then(setInfo).catch(() => {}) }, [])
+  if (!info) return <Mut>Loading…</Mut>
+  const base = location.origin + '/webhook'
+  return (
+    <div className="space-y-2">
+      <Mut>Have Shopify, Pabbly, Zapier or Make POST JSON <Code>{'{"name","phone","email"}'}</Code> to <Code>{base}/contact/{info.slug}?key={info.inboundKey || 'ASK_AN_ADMIN'}</Code>. New contacts appear here and start newContact workflows while this workspace is open.</Mut>
+      <Mut>Point Twilio's inbound message URL at <Code>{base}/twilio/{info.slug}</Code>. Both need a public https address (for example a tunnel).</Mut>
+      {!info.inboundKey && <Mut>Only owners and admins can see the key.</Mut>}
+    </div>
   )
 }

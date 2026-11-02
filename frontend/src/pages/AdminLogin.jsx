@@ -4,7 +4,8 @@ import { api } from '../api'
 import { useAuth } from '../useAuth'
 import { Logo } from '../components/ui'
 
-const isAdmin = (u) => u?.role === 'owner' || u?.role === 'admin'
+const isAdmin = (u) => u?.role === 'owner' || u?.role === 'admin' || u?.isPlatformAdmin
+const home = (u) => (u?.isPlatformAdmin ? '/app/platform' : '/app/admin')
 const L = ({ children }) => <span className="mb-1.5 block text-sm font-medium">{children}</span>
 
 // Dedicated sign-in for the admin portal at /admin. Only owners and admins get through; anyone else is signed back out.
@@ -17,7 +18,7 @@ export default function AdminLogin() {
   const [shake, setShake] = useState(0)
   useEffect(() => { document.title = 'Admin sign-in | Rokesh' }, [])
 
-  if (ready && isAdmin(user)) return <Navigate to="/app/admin" replace />
+  if (ready && isAdmin(user)) return <Navigate to={home(user)} replace />
 
   async function submit(e) {
     e.preventDefault()
@@ -25,7 +26,7 @@ export default function AdminLogin() {
     try {
       const { user: u } = await api.login(f.email, f.password)
       if (!isAdmin(u)) { await signOut(); throw new Error('This account does not have admin access.') }
-      await refresh(); nav('/app/admin')
+      await refresh(); nav(home(u))
     } catch (err) { setError(err.message); setShake((k) => k + 1) }
     finally { setBusy(false) }
   }
@@ -34,7 +35,7 @@ export default function AdminLogin() {
     <main className="grid min-h-screen place-items-center bg-night p-6">
       <form key={shake} onSubmit={submit} className={`w-full max-w-sm space-y-5 rounded-[28px] border border-white/10 bg-page p-8 shadow-soft ${error ? 'animate-shake' : 'animate-reveal'}`}>
         <Link to="/" className="inline-block text-ink no-underline"><Logo /></Link>
-        <div><h1 className="text-3xl font-semibold">Admin sign-in</h1><p className="mt-1 opacity-70">For workspace owners and admins.</p></div>
+        <div><h1 className="text-3xl font-semibold">Admin sign-in</h1><p className="mt-1 opacity-70">For workspace owners, admins and platform admins.</p></div>
         {ready && user && !isAdmin(user) && <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">You are signed in as {user.email}, which does not have admin access. Sign in with an admin account below.</p>}
         <label className="block"><L>Email</L><input type="email" required autoComplete="username" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className="field" /></label>
         <label className="block"><L>Password</L><input type="password" required maxLength={200} autoComplete="current-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} className="field" /></label>

@@ -10,20 +10,25 @@ import {
 } from '../services/providers.js'
 
 const newId = () => randomBytes(5).toString('hex')
-const trimTable = (t) => query(`DELETE FROM ${t} WHERE seq NOT IN (SELECT seq FROM ${t} ORDER BY seq DESC LIMIT 1000)`)
+// Keep only the newest 1000 rows per workspace in a high-volume table.
+const trimTable = (t, ws) => query(`DELETE FROM ${t} WHERE workspace_id = $1 AND seq NOT IN (SELECT seq FROM ${t} WHERE workspace_id = $1 ORDER BY seq DESC LIMIT 1000)`, [ws])
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next)
 
 // ---- Public: the only endpoints meant for outside visitors ----
 export const publicApi = Router()
 
+// A form belongs to one workspace; its public link works only while that workspace is active.
+const ACTIVE_FORM = 'SELECT f.id, f.title, f.intro, f.fields, f.workspace_id FROM forms f JOIN workspaces w ON w.id = f.workspace_id WHERE f.id = $1 AND f.active AND w.status = \'active\''
+
 publicApi.get('/public/forms/:id', wrap(async (req, res) => {
-  const { rows } = await query('SELECT id, title, intro, fields FROM forms WHERE id = $1 AND active', [req.params.id])
+  const { rows } = await query(ACTIVE_FORM, [req.params.id])
   if (!rows.length) return res.status(404).json({ error: 'not found' })
-  res.json(rows[0])
+  const { id, title, intro, fields } = rows[0]
+  res.json({ id, title, intro, fields })
 }))
 
 publicApi.post('/public/forms/:id/submit', wrap(async (req, res) => {
-  const { rows } = await query('SELECT id, fields FROM forms WHERE id = $1 AND active', [req.params.id])
+  const { rows } = await query(ACTIVE_FORM, [req.params.id])
   const f = rows[0]
   if (!f) return res.status(404).json({ error: 'not found' })
   // 10 submissions per minute per visitor per form
@@ -39,21 +44,18 @@ publicApi.post('/public/forms/:id/submit', wrap(async (req, res) => {
   res.json({ ok: true })
 }))
 
-// "Book a demo" form on the marketing site. Kept for the admin portal and also queued as a lead for the workspace.
+// "Book a demo" form on the marketing site. It belongs to the platform, so platform admins follow it up.
 publicApi.post('/public/contact', wrap(async (req, res) => {
   if (limited('contact', req.ip, 5, 60e3)) return res.status(429).json({ error: 'too many requests, try again in a minute' })
   const b = req.body ?? {}
   const email = clip(b.email, 120).trim(), phone = clip(b.phone, 20).trim(), name = clip(b.name, 80).trim()
   if (!name || !emailRe.test(email)) return res.status(400).json({ error: 'name and a valid email are required' })
-  const company = clip(b.company, 60).trim()
   await query('INSERT INTO demo_requests (name, email, phone, company, employees, interest) VALUES ($1, $2, $3, $4, $5, $6)',
-    [name, email, phone, company, clip(b.employees, 20), clip(b.interest, 100)])
-  await query('INSERT INTO leads (id, name, phone, email) VALUES ($1, $2, $3, $4)', [newId(), company ? `${name} (${company})` : name, phone, email])
-  await trimTable('leads')
+    [name, email, phone, clip(b.company, 60).trim(), clip(b.employees, 20), clip(b.interest, 100)])
   res.json({ ok: true })
 }))
 
-// Support page on the marketing site: creates a ticket for the admin portal's queue.
+// Support page on the marketing site: creates a ticket for the platform's support queue.
 publicApi.post('/public/support', wrap(async (req, res) => {
   if (limited('support', req.ip, 5, 60e3)) return res.status(429).json({ error: 'too many requests, try again in a minute' })
   const b = req.body ?? {}
@@ -63,18 +65,25 @@ publicApi.post('/public/support', wrap(async (req, res) => {
   res.json({ ok: true })
 }))
 
-publicApi.get('/status',(_req, res) => res.json({
+publicApi.get('/status', (_req, res) => res.json({
   live: twilioLive(), emailLive: emailLive(), agentLive: Boolean(agentProvider()), agentProvider: agentProvider(), razorpayLive: razorpayLive(),
   channels: { sms: Boolean(process.env.TWILIO_SMS_FROM), whatsapp: Boolean(process.env.TWILIO_WHATSAPP_FROM) },
 }))
 
-// ---- Workspace (signed-in users) ----
+// ---- Workspace (signed-in users). Every query below is limited to the caller's own workspace. ----
 export const workspaceApi = Router()
 workspaceApi.use(['/workspace', '/forms', '/inbox', '/leads', '/agent', '/verify-email', '/payment-link', '/call', '/send'], requireAuth)
 
+// Name, address for webhooks and, for owners and admins, the secret key used by inbound webhooks.
+workspaceApi.get('/workspace/info', wrap(async (req, res) => {
+  const { rows } = await query('SELECT name, slug, inbound_key FROM workspaces WHERE id = $1', [req.user.workspace_id])
+  const w = rows[0], privileged = req.user.role === 'owner' || req.user.role === 'admin'
+  res.json({ name: w.name, slug: w.slug, inboundKey: privileged ? w.inbound_key : null })
+}))
+
 // The workspace's working data (contacts, templates, workflows, ...) as one JSON document.
-workspaceApi.get('/workspace/state', wrap(async (_req, res) => {
-  const { rows } = await query('SELECT data FROM workspace_state WHERE id = 1')
+workspaceApi.get('/workspace/state', wrap(async (req, res) => {
+  const { rows } = await query('SELECT data FROM workspace_state WHERE workspace_id = $1', [req.user.workspace_id])
   res.json({ state: rows[0]?.data ?? null })
 }))
 
@@ -82,59 +91,61 @@ workspaceApi.put('/workspace/state', wrap(async (req, res) => {
   const state = req.body?.state
   if (!state || typeof state !== 'object' || Array.isArray(state)) return res.status(400).json({ error: 'state object required' })
   await query(
-    'INSERT INTO workspace_state (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = $1, updated_at = now()',
-    [JSON.stringify(state)])
+    'INSERT INTO workspace_state (workspace_id, data) VALUES ($1, $2) ON CONFLICT (workspace_id) DO UPDATE SET data = $2, updated_at = now()',
+    [req.user.workspace_id, JSON.stringify(state)])
   res.json({ ok: true })
 }))
 
-workspaceApi.get('/forms',wrap(async (_req, res) => {
-  const forms = (await query('SELECT id, title, intro, fields, active FROM forms ORDER BY created_at')).rows
-  const submissions = (await query('SELECT id, form_id AS form, at, values FROM submissions ORDER BY at')).rows
+workspaceApi.get('/forms', wrap(async (req, res) => {
+  const ws = req.user.workspace_id
+  const forms = (await query('SELECT id, title, intro, fields, active FROM forms WHERE workspace_id = $1 ORDER BY created_at', [ws])).rows
+  const submissions = (await query('SELECT s.id, s.form_id AS form, s.at, s.values FROM submissions s JOIN forms f ON f.id = s.form_id WHERE f.workspace_id = $1 ORDER BY s.at', [ws])).rows
   res.json({ forms, submissions })
 }))
 
 workspaceApi.post('/forms', wrap(async (req, res) => {
-  const b = req.body ?? {}
-  const existing = b.id && (await query('SELECT id FROM forms WHERE id = $1', [String(b.id)])).rows[0]
+  const b = req.body ?? {}, ws = req.user.workspace_id
+  // Reusing an id only updates a form that already belongs to this workspace; otherwise a new id is made.
+  const existing = b.id && (await query('SELECT id FROM forms WHERE id = $1 AND workspace_id = $2', [String(b.id), ws])).rows[0]
   const id = existing ? existing.id : newId()
   const fields = (Array.isArray(b.fields) ? b.fields : []).slice(0, 20).map((x) => ({
     name: clip(x.name, 30).replace(/\W/g, '_') || 'f', label: clip(x.label, 60),
     type: ['text', 'email', 'tel', 'textarea'].includes(x.type) ? x.type : 'text', required: !!x.required,
   }))
   const { rows } = await query(
-    `INSERT INTO forms (id, title, intro, fields, active) VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO forms (id, title, intro, fields, active, workspace_id) VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (id) DO UPDATE SET title = $2, intro = $3, fields = $4, active = $5
      RETURNING id, title, intro, fields, active`,
-    [id, clip(b.title, 80), clip(b.intro, 300), JSON.stringify(fields), b.active !== false])
+    [id, clip(b.title, 80), clip(b.intro, 300), JSON.stringify(fields), b.active !== false, ws])
   res.json(rows[0])
 }))
 
 workspaceApi.delete('/forms/:id', wrap(async (req, res) => {
-  await query('DELETE FROM forms WHERE id = $1', [req.params.id]) // submissions cascade
+  await query('DELETE FROM forms WHERE id = $1 AND workspace_id = $2', [req.params.id, req.user.workspace_id]) // submissions cascade
   res.json({ ok: true })
 }))
 
-workspaceApi.get('/inbox', wrap(async (_req, res) => {
-  const { rows } = await query('SELECT id, at, channel, addr AS "from", text, dir, bot FROM inbox ORDER BY seq')
+workspaceApi.get('/inbox', wrap(async (req, res) => {
+  const { rows } = await query('SELECT id, at, channel, addr AS "from", text, dir, bot FROM inbox WHERE workspace_id = $1 ORDER BY seq', [req.user.workspace_id])
   res.json({ messages: rows })
 }))
 
 // Outgoing reply, or a demo inbound when dir is "in".
 workspaceApi.post('/inbox/log', wrap(async (req, res) => {
-  const b = req.body ?? {}
-  await query('INSERT INTO inbox (id, channel, addr, text, dir, bot) VALUES ($1, $2, $3, $4, $5, $6)',
-    [newId(), clip(b.channel, 16), clip(b.to || b.from, 80), clip(b.text, 1600), b.dir === 'in' ? 'in' : 'out', !!b.bot])
-  await trimTable('inbox')
+  const b = req.body ?? {}, ws = req.user.workspace_id
+  await query('INSERT INTO inbox (id, channel, addr, text, dir, bot, workspace_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+    [newId(), clip(b.channel, 16), clip(b.to || b.from, 80), clip(b.text, 1600), b.dir === 'in' ? 'in' : 'out', !!b.bot, ws])
+  await trimTable('inbox', ws)
   res.json({ ok: true })
 }))
 
-workspaceApi.get('/leads', wrap(async (_req, res) => {
-  res.json({ leads: (await query('SELECT id, at, name, phone, email FROM leads ORDER BY seq')).rows })
+workspaceApi.get('/leads', wrap(async (req, res) => {
+  res.json({ leads: (await query('SELECT id, at, name, phone, email FROM leads WHERE workspace_id = $1 ORDER BY seq', [req.user.workspace_id])).rows })
 }))
 
 workspaceApi.post('/leads/ack', wrap(async (req, res) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : []
-  await query('DELETE FROM leads WHERE id = ANY($1)', [ids])
+  await query('DELETE FROM leads WHERE id = ANY($1) AND workspace_id = $2', [ids, req.user.workspace_id])
   res.json({ ok: true })
 }))
 
@@ -201,33 +212,52 @@ workspaceApi.post('/send', wrap(async (req, res) => {
 // ---- Webhooks (outside /api, no session) ----
 export const webhooks = Router()
 
-// Generic inbound contact webhook for Shopify/Pabbly/Zapier/Make. Disabled unless INBOUND_KEY is 16+ characters.
-webhooks.post('/contact', wrap(async (req, res) => {
-  const key = process.env.INBOUND_KEY
-  if (!key || key.length < 16) return res.status(404).json({ error: 'not found' })
+// /webhook/<kind>/<slug> routes to that workspace. The bare /webhook/<kind> path keeps working for the first
+// (oldest) workspace, so URLs configured before workspaces existed do not break.
+async function webhookWorkspace(slug) {
+  const { rows } = slug
+    ? await query('SELECT id, slug, status, inbound_key FROM workspaces WHERE slug = $1', [slug])
+    : await query('SELECT id, slug, status, inbound_key FROM workspaces ORDER BY id LIMIT 1')
+  const w = rows[0]
+  return w && w.status === 'active' ? { ...w, legacy: !slug } : null
+}
+
+// Generic inbound contact webhook for Shopify/Pabbly/Zapier/Make. Each workspace has its own secret key
+// (shown to its owner); the bare legacy path uses INBOUND_KEY from the environment.
+async function contactHook(req, res) {
+  const ws = await webhookWorkspace(req.params.slug)
+  const key = ws ? (ws.legacy ? process.env.INBOUND_KEY : ws.inbound_key) : null
+  if (!ws || !key || key.length < 16) return res.status(404).json({ error: 'not found' })
   const got = Buffer.from(String(req.query.key || req.headers['x-webhook-key'] || ''))
   if (got.length !== Buffer.byteLength(key) || !timingSafeEqual(got, Buffer.from(key))) return res.status(403).json({ error: 'bad key' })
   const b = req.body ?? {}
   const phone = clip(b.phone || b.mobile, 20).trim(), email = clip(b.email, 120).trim()
   if (!phone && !email) return res.status(400).json({ error: 'phone or email required' })
-  await query('INSERT INTO leads (id, name, phone, email) VALUES ($1, $2, $3, $4)', [newId(), clip(b.name || b.first_name, 80), phone, email])
-  await trimTable('leads')
+  await query('INSERT INTO leads (id, name, phone, email, workspace_id) VALUES ($1, $2, $3, $4, $5)', [newId(), clip(b.name || b.first_name, 80), phone, email, ws.id])
+  await trimTable('leads', ws.id)
   res.json({ ok: true })
-}))
+}
+webhooks.post('/contact', wrap(contactHook))
+webhooks.post('/contact/:slug', wrap(contactHook))
 
 // Twilio "when a message comes in" URL. The signature is verified when credentials and PUBLIC_URL are set.
-webhooks.post('/twilio', express.urlencoded({ extended: false, limit: '20kb' }), wrap(async (req, res) => {
+async function twilioHook(req, res) {
+  const ws = await webhookWorkspace(req.params.slug)
+  if (!ws) return res.status(404).json({ error: 'not found' })
   const q = req.body ?? {}
   if (twilioLive() && process.env.PUBLIC_URL) {
-    const base = process.env.PUBLIC_URL.replace(/\/$/, '') + '/webhook/twilio'
+    const base = process.env.PUBLIC_URL.replace(/\/$/, '') + '/webhook/twilio' + (req.params.slug ? `/${req.params.slug}` : '')
     const str = base + Object.keys(q).sort().map((k) => k + q[k]).join('')
     const want = createHmac('sha1', process.env.TWILIO_AUTH_TOKEN).update(str).digest('base64')
     const got = String(req.headers['x-twilio-signature'] || '')
     if (want.length !== got.length || !timingSafeEqual(Buffer.from(want), Buffer.from(got))) return res.status(403).json({ error: 'bad signature' })
   }
   const from = clip(q.From, 40), body = clip(q.Body, 1600)
-  await query('INSERT INTO inbox (id, channel, addr, text, dir) VALUES ($1, $2, $3, $4, $5)',
-    [newId(), from.startsWith('whatsapp:') ? 'whatsapp' : 'sms', from.replace('whatsapp:', ''), body, 'in'])
-  await trimTable('inbox')
+  await query('INSERT INTO inbox (id, channel, addr, text, dir, workspace_id) VALUES ($1, $2, $3, $4, $5, $6)',
+    [newId(), from.startsWith('whatsapp:') ? 'whatsapp' : 'sms', from.replace('whatsapp:', ''), body, 'in', ws.id])
+  await trimTable('inbox', ws.id)
   res.type('text/xml').send('<Response/>')
-}))
+}
+const urlencoded = express.urlencoded({ extended: false, limit: '20kb' })
+webhooks.post('/twilio', urlencoded, wrap(twilioHook))
+webhooks.post('/twilio/:slug', urlencoded, wrap(twilioHook))

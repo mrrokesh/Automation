@@ -21,16 +21,37 @@ Everything below lives under `/app` and saves to PostgreSQL.
 - **Commerce and tools:** WhatsApp catalog, Razorpay payment links, email verifier.
 - **Channels:** WhatsApp and SMS (Twilio), email (Resend). Without provider keys everything runs in a simulated mode.
 
-## Admin portal
+## Workspaces, admins and the platform
 
-Sign in at **`/admin`** (a dedicated admin login that only lets owners and admins through) or use the normal login and open the **Admin** section in the workspace sidebar (`/app/admin`). Members never see it, and the API refuses them.
+Rokesh is multi-tenant. Each customer gets their own **workspace** with separate users, contacts, forms, inbox, leads and settings. Every API query is limited to the signed-in user's workspace, and tests prove one workspace cannot read or change another's data.
 
-- **Overview:** user, demo-request, ticket, contact and form counts, a 7-day activity chart, and which services are live.
-- **Users:** invite, change role, disable or enable, set a temporary password, delete. The owner account cannot be changed, only the owner can create admins or change roles, and nobody can edit their own account here. Disabled users are signed out at once.
-- **Demo requests:** everyone who used "Book a demo", with status (new, contacted, closed) and notes.
-- **Support tickets:** requests from the public `/support` page, with status, priority, assignee, notes and email replies (sent when Resend is configured).
-- **Audit log:** sign-ins and every admin action, with filters. Passwords are never recorded.
+| Role | Can do |
+| --- | --- |
+| **Member** | Use their workspace. |
+| **Admin** | Everything a member can, plus the workspace admin portal: manage members, view the workspace audit log. |
+| **Owner** | Everything an admin can, plus create admins and change roles. Cannot be changed from the portal. |
+| **Platform admin** | A flag on a user. Runs the whole platform: create, suspend and delete workspaces, see every demo request and support ticket, the global audit log and system status. |
+
+The first account ever created becomes the owner of the first workspace and the platform admin. After that, platform admins create new workspaces (for example straight from a demo request) with a temporary owner password.
+
+Sign in at **`/admin`** (a dedicated admin login; platform admins land on the platform portal, workspace owners and admins on their own admin portal), or use the normal login and open the **Admin** or **Platform** section in the sidebar. Members never see them, and the API refuses their requests.
+
+**Workspace admin portal (`/app/admin`)**
+- **Overview:** this workspace's users, contacts, forms, responses and sign-ins.
+- **Users:** invite, change role, disable or enable, set a temporary password, delete. Disabled users are signed out at once.
+- **Audit log:** sign-ins and admin actions in this workspace. Passwords are never recorded.
+
+**Platform portal (`/app/platform`)**
+- **Overview** across all workspaces, with a 7-day activity chart.
+- **Workspaces:** create (with an owner), rename, suspend or reactivate (users are signed out and blocked, public forms go offline), reset any user's password, grant or remove platform admin, rotate a workspace's webhook key, and delete a workspace after typing its address. You cannot suspend or delete your own workspace.
+- **Demo requests:** everyone who used "Book a demo", with status and notes, and a **Create workspace** button.
+- **Support tickets:** requests from the public `/support` page with status, priority, assignee, notes and email replies (sent when Resend is configured).
+- **Audit log** across all workspaces, filterable by workspace. It survives a workspace being deleted.
 - **System:** server, database and configuration status. Secrets are never shown.
+
+Provider keys (Twilio, Resend, Razorpay, AI) are set once for the whole platform and shared by every workspace. Inbound webhooks are per workspace: `/webhook/twilio/<workspace>` and `/webhook/contact/<workspace>?key=...` (each workspace has its own key). The old paths without a workspace keep working for the first workspace.
+
+Not included: impersonating a customer, self-serve signup, per-customer billing, and per-workspace provider keys.
 
 ## Quick start
 
